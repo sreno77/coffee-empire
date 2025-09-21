@@ -200,76 +200,92 @@ def game_loop():
 # ========================
 # UI SETUP
 # ========================
-root = tk.Tk()
-root.title("🍵 Coffee Empire 🍵")
+def setup_root():
+    root = tk.Tk()
+    root.title("🍵 Coffee Empire 🍵")
+    return root
 
-# Stats
-stats_label = tk.Label(root, text="", font=("Arial", 12))
-stats_label.pack(pady=5)
+def setup_stats_label(root):
+    stats_label = tk.Label(root, text="", font=("Arial", 12))
+    stats_label.pack(pady=5)
+    return stats_label
 
-# Brew Button
-canvas = tk.Canvas(root, width=120, height=100, bg="white")
-canvas.pack(pady=5)
+def setup_canvas(root):
+    canvas = tk.Canvas(root, width=120, height=100, bg="white")
+    canvas.pack(pady=5)
+    return canvas
 
-# Load brew button image
-images["brew"] = tk.PhotoImage(file="cup.png")
+def setup_brew_button(canvas, images, brew_click):
+    images["brew"] = tk.PhotoImage(file="cup.png")
+    brew_btn = tk.Button(canvas, image=images["brew"], command=brew_click, borderwidth=0, highlightthickness=0, bg="white", activebackground="white")
+    canvas.create_window(60, 50, window=brew_btn)
+    ToolTip(brew_btn, "Brew Coffee")
+    return brew_btn
 
-# Brew Button with PNG
-brew_btn = tk.Button(root, image=images["brew"], command=brew_click, borderwidth=0, highlightthickness=0, bg="white", activebackground="white")
-canvas.create_window(60, 50, window=brew_btn)
+def setup_notebook(root):
+    notebook = ttk.Notebook(root)
+    notebook.pack(fill="both", expand=True, padx=10, pady=10)
+    return notebook
 
-# Tooltip for clarity
-ToolTip(brew_btn, "Brew Coffee")
+def setup_producers_tab(notebook, images, producer_widgets, state, buy_producer):
+    producers_tab = ttk.Frame(notebook)
+    notebook.add(producers_tab, text="Producers")
+    for pid, p in state["producers"].items():
+        frame = tk.Frame(producers_tab)
+        frame.pack(fill="x", pady=2)
+        images[pid] = tk.PhotoImage(file=p["icon"])
+        btn = tk.Button(frame, image=images[pid], command=lambda pid=pid: buy_producer(pid))
+        btn.pack(side="left")
+        label = tk.Label(frame, text="", anchor="w", justify="left")
+        label.pack(side="left", padx=5)
+        producer_widgets[pid] = {"button": btn, "label": label}
+    return producers_tab
 
+def setup_upgrades_tab(notebook, images, upgrade_widgets, state, buy_upgrade):
+    upgrades_tab = ttk.Frame(notebook)
+    notebook.add(upgrades_tab, text="Upgrades")
+    for uid, u in state["upgrades"].items():
+        frame = tk.Frame(upgrades_tab)
+        frame.pack(fill="x", pady=2)
+        images[uid] = tk.PhotoImage(file=u["icon"])
+        btn = tk.Button(frame, image=images[uid], command=lambda uid=uid: buy_upgrade(uid))
+        btn.pack(side="left")
+        label = tk.Label(frame, text="???", anchor="w", justify="left")
+        label.pack(side="left", padx=5)
+        upgrade_widgets[uid] = {"button": btn, "label": label}
+        ToolTip(label, unlock_hint(u))
+    return upgrades_tab
 
-# Tabs
-notebook = ttk.Notebook(root)
-notebook.pack(fill="both", expand=True, padx=10, pady=10)
+def setup_stats_tab(notebook, stats_widgets):
+    stats_tab = ttk.Frame(notebook)
+    notebook.add(stats_tab, text="Stats & Achievements")
+    stats_widgets["clicks"] = tk.Label(stats_tab, text="Total Clicks: 0", anchor="w")
+    stats_widgets["clicks"].pack(fill="x", pady=2)
+    stats_widgets["upgrades"] = tk.Label(stats_tab, text="Total Upgrades Bought: 0", anchor="w")
+    stats_widgets["upgrades"].pack(fill="x", pady=2)
+    stats_widgets["achievements"] = tk.Label(stats_tab, text="Achievements: None", anchor="w", wraplength=250, justify="left")
+    stats_widgets["achievements"].pack(fill="x", pady=2)
+    return stats_tab
 
-# Producers Tab
-producers_tab = ttk.Frame(notebook)
-notebook.add(producers_tab, text="Producers")
-for pid, p in state["producers"].items():
-    frame = tk.Frame(producers_tab)
-    frame.pack(fill="x", pady=2)
+# ========================
+# MAIN
+# ========================
+def main():
+    global root, stats_label, canvas
+    root = setup_root()
+    stats_label = setup_stats_label(root)
+    canvas = setup_canvas(root)
+    setup_brew_button(canvas, images, brew_click)
+    notebook = setup_notebook(root)
+    setup_producers_tab(notebook, images, producer_widgets, state, buy_producer)
+    setup_upgrades_tab(notebook, images, upgrade_widgets, state, buy_upgrade)
+    setup_stats_tab(notebook, stats_widgets)
+    update_ui()
+    game_loop()
+    root.mainloop()
 
-    images[pid] = tk.PhotoImage(file=p["icon"])
-    btn = tk.Button(frame, image=images[pid], command=lambda pid=pid: buy_producer(pid))
-    btn.pack(side="left")
-
-    label = tk.Label(frame, text="", anchor="w", justify="left")
-    label.pack(side="left", padx=5)
-
-    producer_widgets[pid] = {"button": btn, "label": label}
-
-# Upgrades Tab
-upgrades_tab = ttk.Frame(notebook)
-notebook.add(upgrades_tab, text="Upgrades")
-for uid, u in state["upgrades"].items():
-    frame = tk.Frame(upgrades_tab)
-    frame.pack(fill="x", pady=2)
-
-    images[uid] = tk.PhotoImage(file=u["icon"])
-    btn = tk.Button(frame, image=images[uid], command=lambda uid=uid: buy_upgrade(uid))
-    btn.pack(side="left")
-
-    label = tk.Label(frame, text="???", anchor="w", justify="left")
-    label.pack(side="left", padx=5)
-
-    upgrade_widgets[uid] = {"button": btn, "label": label}
-    ToolTip(label, unlock_hint(u))
-
-# Stats & Achievements Tab
-stats_tab = ttk.Frame(notebook)
-notebook.add(stats_tab, text="Stats & Achievements")
-stats_widgets["clicks"] = tk.Label(stats_tab, text="Total Clicks: 0", anchor="w")
-stats_widgets["clicks"].pack(fill="x", pady=2)
-stats_widgets["upgrades"] = tk.Label(stats_tab, text="Total Upgrades Bought: 0", anchor="w")
-stats_widgets["upgrades"].pack(fill="x", pady=2)
-stats_widgets["achievements"] = tk.Label(stats_tab, text="Achievements: None", anchor="w", wraplength=250, justify="left")
-stats_widgets["achievements"].pack(fill="x", pady=2)
-
-# Start Game
-update_ui()
-game_loop()
-root.mainloop()
+# ========================
+# START
+# ========================
+if __name__ == "__main__":
+    main()
