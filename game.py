@@ -201,7 +201,7 @@ def game_loop():
 # UI SETUP
 # ========================
 root = tk.Tk()
-root.title("Coffee Empire Idle Game")
+root.title("🍵 Coffee Empire 🍵")
 
 # Stats
 stats_label = tk.Label(root, text="", font=("Arial", 12))
