@@ -9,6 +9,7 @@ Coffee Empire is a simple idle/incremental game built with Python and Tkinter. B
 - Achievements to unlock as you progress
 - Animated floating text and tooltips for a polished UI
 - All graphics are local PNGs for a fun, themed experience
+- **Auto-save and load**: Your progress is saved when you close the app and restored when you reopen it
 
 ## Getting Started
 
@@ -44,6 +45,7 @@ coffee-empire/
 ├── machine.png
 ├── shop.png
 ├── turbo.png
+├── coffee_empire_save.json  # (auto-generated save file)
 ├── bak/
 │   ├── barista_big.png
 │   ├── better_beans_big.png
@@ -51,6 +53,10 @@ coffee-empire/
 │   ├── machine_big.png
 │   └── shop_big.png
 ```
+
+## Save/Load
+- The game automatically saves your progress to `coffee_empire_save.json` when you close the app.
+- Your progress is restored when you reopen the app.
 
 ## Credits
 - All code and graphics are for demonstration and educational purposes.
