@@ -1,5 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
+import json
+import os
 
 # ========================
 # GAME STATE
@@ -13,17 +15,17 @@ state = {
     "achievements": [],
     "producers": {
         "barista": {"name": "Hire Barista", "baseProd": 1, "baseCost": 2, "costMul": 1.15, "qty": 0, "mult": 1, "icon": "barista.png"},
-        "machine": {"name": "Buy Coffee Machine", "baseProd": 5, "baseCost": 50, "costMul": 1.15, "qty": 0, "mult": 1, "icon": "machine.png"},
-        "shop": {"name": "Open Coffee Shop", "baseProd": 20, "baseCost": 200, "costMul": 1.15, "qty": 0, "mult": 1, "icon": "shop.png"},
-
-        "farmer": {"name": "Hire Coffee Farmer", "baseProd": 100, "baseCost": 1000, "costMul": 1.15, "qty": 0, "mult": 1, "icon": "shop.png"},
-        "factory": {"name": "Build Coffee Factory", "baseProd": 500, "baseCost": 10000, "costMul": 1.15, "qty": 0, "mult": 1, "icon": "shop.png"},
-        "franchise": {"name": "Start Global Franchise", "baseProd": 5000, "baseCost": 100000, "costMul": 1.15, "qty": 0, "mult": 1, "icon": "shop.png"},
+        "machine": {"name": "Buy Coffee Machine", "baseProd": 5, "baseCost": 100, "costMul": 1.15, "qty": 0, "mult": 1, "icon": "machine.png"},
+        "shop": {"name": "Open Coffee Shop", "baseProd": 20, "baseCost": 400, "costMul": 1.15, "qty": 0, "mult": 1, "icon": "shop.png"},
+        "farmer": {"name": "Hire Coffee Farmer", "baseProd": 100, "baseCost": 2000, "costMul": 1.15, "qty": 0, "mult": 1, "icon": "shop.png"},
+        "factory": {"name": "Build Coffee Factory", "baseProd": 500, "baseCost": 20000, "costMul": 1.15, "qty": 0, "mult": 1, "icon": "shop.png"},
+        "franchise": {"name": "Start Global Franchise", "baseProd": 5000, "baseCost": 200000, "costMul": 1.15, "qty": 0, "mult": 1, "icon": "shop.png"},
     },
     "upgrades": {
-        "stronger_hands": {"type": "click", "name": "Stronger Hands", "mult": 2, "cost": 50, "purchased": False, "unlock_at": {"money": 20}, "icon": "hands.png"},
-        "turbo_brewing": {"type": "click", "name": "Turbo Brewing", "mult": 3, "cost": 250, "purchased": False, "unlock_at": {"money": 100}, "icon": "turbo.png"},
-        "better_beans": {"type": "producer", "name": "Better Beans", "target": "barista", "mult": 2, "cost": 100, "purchased": False, "unlock_at": {"producer": ("barista", 5)}, "icon": "beans.png"},
+        "stronger_hands": {"type": "click", "name": "Stronger Hands", "mult": 2, "cost": 200, "purchased": False, "unlock_at": {"money": 20}, "icon": "hands.png"},
+        "turbo_brewing": {"type": "click", "name": "Turbo Brewing", "mult": 3, "cost": 1000, "purchased": False, "unlock_at": {"money": 100}, "icon": "turbo.png"},
+        "better_beans": {"type": "producer", "name": "Better Beans", "target": "barista", "mult": 2, "cost": 500, "purchased": False, "unlock_at": {"producer": ("barista", 5)}, "icon": "beans.png"},
+        "cold_brew": {"type": "producer", "name": "Cold Brew", "target": "barista", "mult": 2.5, "cost": 10000, "purchased": False, "unlock_at": {"producer": ("barista", 75)}, "icon": "beans.png"},
     }
 }
 
@@ -32,6 +34,8 @@ producer_widgets = {}
 upgrade_widgets = {}
 stats_widgets = {}
 images = {}  # keep references alive
+
+STATE_FILE = "coffee_empire_save.json"
 
 # ========================
 # HELPERS
@@ -154,7 +158,7 @@ def check_achievements():
 # ========================
 def update_ui():
     stats_label.config(
-        text=f"Cups: {format_num(state['cups'])}   |   Money: ${format_num(state['money'])}\n"
+        text=f"Cups: {format_num(state['cups'])}   |   Profit: ${format_num(state['money'])}\n"
              f"Production: {get_total_production():.1f} cups/sec   |   Click Power: {state['click_power']}"
     )
 
@@ -268,11 +272,39 @@ def setup_stats_tab(notebook, stats_widgets):
     return stats_tab
 
 # ========================
+# SAVE/LOAD STATE
+# ========================
+def save_state():
+    try:
+        with open(STATE_FILE, "w") as f:
+            json.dump(state, f)
+    except Exception as e:
+        print(f"Error saving state: {e}")
+
+def load_state():
+    if os.path.exists(STATE_FILE):
+        try:
+            with open(STATE_FILE, "r") as f:
+                loaded = json.load(f)
+            # Only update keys that exist in the default state
+            for k in state:
+                if k in loaded:
+                    state[k] = loaded[k]
+        except Exception as e:
+            print(f"Error loading state: {e}")
+
+def on_close():
+    save_state()
+    root.destroy()
+
+# ========================
 # MAIN
 # ========================
 def main():
     global root, stats_label, canvas
+    load_state()
     root = setup_root()
+    root.protocol("WM_DELETE_WINDOW", on_close)
     stats_label = setup_stats_label(root)
     canvas = setup_canvas(root)
     setup_brew_button(canvas, images, brew_click)
