@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import json
 import os
+from DatabaseManager import DatabaseManager
 
 # ========================
 # GAME STATE
@@ -52,18 +53,25 @@ def get_total_production():
 
 def is_unlocked(u):
     cond = u.get("unlock_at", {})
+
     if "money" in cond and state["money"] < cond["money"]: return False
+
     if "producer" in cond:
         pid, qty = cond["producer"]
+
         if state["producers"][pid]["qty"] < qty: return False
+
     return True
 
 def unlock_hint(u):
     cond = u.get("unlock_at", {})
+
     if "money" in cond: return f"Requires ${cond['money']}"
+
     if "producer" in cond:
         pid, qty = cond["producer"]
         return f"Requires {qty} {state['producers'][pid]['name']}(s)"
+    
     return "Unlock condition unknown"
 
 # ========================
@@ -99,6 +107,7 @@ def brew_click():
     state["cups"] += gain
     state["money"] += gain
     state["total_clicks"] += 1
+
     floating_text(canvas, 60, 40, f"+{gain} coffee", color="saddlebrown")
     check_achievements()
     update_ui()
@@ -106,22 +115,29 @@ def brew_click():
 def buy_producer(pid):
     p = state["producers"][pid]
     cost = get_cost(p)
+
     if state["money"] >= cost:
         state["money"] -= cost
         p["qty"] += 1
+
     update_ui()
 
 def buy_upgrade(uid):
     u = state["upgrades"][uid]
+
     if u["purchased"] or not is_unlocked(u): return
+
     if state["money"] >= u["cost"]:
         state["money"] -= u["cost"]
+
         if u["type"] == "click":
             state["click_power"] *= u["mult"]
         elif u["type"] == "producer":
             state["producers"][u["target"]]["mult"] *= u["mult"]
+
         u["purchased"] = True
         state["total_upgrades"] += 1
+
     check_achievements()
     update_ui()
 
@@ -131,10 +147,12 @@ def buy_upgrade(uid):
 def floating_text(canvas, x, y, text, color="black"):
     label = tk.Label(canvas, text=text, fg=color, bg="white", font=("Arial", 10, "bold"))
     label.place(x=x, y=y)
+
     def animate(i=0):
         if i > 20: label.destroy(); return
         label.place(x=x, y=y - i)
         label.after(30, animate, i+1)
+
     animate()
 
 # ========================
@@ -147,10 +165,12 @@ def check_achievements():
         ("Bean Tycoon", lambda: state["cups"] >= 1000),
         ("Upgrade Enthusiast", lambda: state["total_upgrades"] >= 3),
     ]
+
     for name, cond in achievements:
         if cond() and name not in state["achievements"]:
             state["achievements"].append(name)
             floating_text(canvas, 60, 20, f"Achievement: {name}", color="green")
+
     update_ui()
 
 # ========================
@@ -165,6 +185,7 @@ def update_ui():
     # Producers
     for pid, p in state["producers"].items():
         cost = get_cost(p)
+
         producer_widgets[pid]["label"].config(
             text=f"{p['name']} (x{p['qty']})\nCost: ${format_num(cost)} | +{p['baseProd']*p['mult']}/sec"
         )
@@ -172,10 +193,12 @@ def update_ui():
     # Upgrades
     for uid, u in state["upgrades"].items():
         w = upgrade_widgets[uid]
+
         if not is_unlocked(u):
             w["label"].config(text="???")
             w["button"].config(state="disabled")
             continue
+
         if u["purchased"]:
             w["label"].config(text=f"{u['name']} (BOUGHT)")
             w["button"].config(state="disabled")
@@ -197,6 +220,7 @@ def game_loop():
     prod = get_total_production() / 10
     state["cups"] += prod
     state["money"] += prod
+
     check_achievements()
     update_ui()
     root.after(100, game_loop)
@@ -224,16 +248,19 @@ def setup_brew_button(canvas, images, brew_click):
     brew_btn = tk.Button(canvas, image=images["brew"], command=brew_click, borderwidth=0, highlightthickness=0, bg="white", activebackground="white")
     canvas.create_window(60, 50, window=brew_btn)
     ToolTip(brew_btn, "Brew Coffee")
+
     return brew_btn
 
 def setup_notebook(root):
     notebook = ttk.Notebook(root)
     notebook.pack(fill="both", expand=True, padx=10, pady=10)
+
     return notebook
 
 def setup_producers_tab(notebook, images, producer_widgets, state, buy_producer):
     producers_tab = ttk.Frame(notebook)
     notebook.add(producers_tab, text="Producers")
+
     for pid, p in state["producers"].items():
         frame = tk.Frame(producers_tab)
         frame.pack(fill="x", pady=2)
@@ -243,11 +270,13 @@ def setup_producers_tab(notebook, images, producer_widgets, state, buy_producer)
         label = tk.Label(frame, text="", anchor="w", justify="left")
         label.pack(side="left", padx=5)
         producer_widgets[pid] = {"button": btn, "label": label}
+
     return producers_tab
 
 def setup_upgrades_tab(notebook, images, upgrade_widgets, state, buy_upgrade):
     upgrades_tab = ttk.Frame(notebook)
     notebook.add(upgrades_tab, text="Upgrades")
+
     for uid, u in state["upgrades"].items():
         frame = tk.Frame(upgrades_tab)
         frame.pack(fill="x", pady=2)
@@ -258,6 +287,7 @@ def setup_upgrades_tab(notebook, images, upgrade_widgets, state, buy_upgrade):
         label.pack(side="left", padx=5)
         upgrade_widgets[uid] = {"button": btn, "label": label}
         ToolTip(label, unlock_hint(u))
+
     return upgrades_tab
 
 def setup_stats_tab(notebook, stats_widgets):
@@ -269,23 +299,91 @@ def setup_stats_tab(notebook, stats_widgets):
     stats_widgets["upgrades"].pack(fill="x", pady=2)
     stats_widgets["achievements"] = tk.Label(stats_tab, text="Achievements: None", anchor="w", wraplength=250, justify="left")
     stats_widgets["achievements"].pack(fill="x", pady=2)
+    
     return stats_tab
 
 # ========================
 # SAVE/LOAD STATE
 # ========================
+
 def save_state():
+    if db is not None:
+        save_db_state()
+    else:
+        save_file_state()
+
+def save_db_state():
+    # first time we are saving, insert into db
+    if db is not None and db.read(1) is None:
+        db.create(
+            {
+                "cups": state["cups"],
+                "money": state["money"],
+                "click_power": state["click_power"],
+                "total_clicks": state["total_clicks"],
+                "total_upgrades": state["total_upgrades"],
+                "achievements": ", ".join(state["achievements"]),
+                "producers": json.dumps(state["producers"]),
+                "upgrades": json.dumps(state["upgrades"])
+            }
+        )
+    elif db is not None:
+        db.update(
+            {
+                "id": 1,
+                "cups": state["cups"],
+                "money": state["money"],
+                "click_power": state["click_power"],
+                "total_clicks": state["total_clicks"],
+                "total_upgrades": state["total_upgrades"],
+                "achievements": ", ".join(state["achievements"]),
+                "producers": json.dumps(state["producers"]),
+                "upgrades": json.dumps(state["upgrades"])
+            }
+        )
+    else:
+        raise
+
+def save_file_state():
     try:
         with open(STATE_FILE, "w") as f:
             json.dump(state, f)
     except Exception as e:
         print(f"Error saving state: {e}")
 
-def load_state():
+def load_state(use_db):
+    if use_db:
+        load_db_state()
+    else:
+        load_file_state()
+
+def load_db_state():
+    record = db.read(1) if db is not None else None
+
+    if record:
+        state["cups"] = record[1]
+        state["money"] = record[2]
+        state["click_power"] = record[3]
+        state["total_clicks"] = record[4]
+        state["total_upgrades"] = record[5]
+        state["achievements"] = record[6].split(", ") if record[6] else []
+
+        try:
+            state["producers"] = json.loads(record[7])
+        except json.JSONDecodeError:
+            state["producers"] = {}
+            
+        try:
+            state["upgrades"] = json.loads(record[8])
+        except json.JSONDecodeError:
+            state["upgrades"] = {}
+
+def load_file_state():
     if os.path.exists(STATE_FILE):
         try:
             with open(STATE_FILE, "r") as f:
                 loaded = json.load(f)
+
             # Only update keys that exist in the default state
             for k in state:
                 if k in loaded:
@@ -300,24 +398,38 @@ def on_close():
 # ========================
 # MAIN
 # ========================
-def main():
-    global root, stats_label, canvas
-    load_state()
+def main(use_db=True):
+    global root, stats_label, canvas, db
+
+    db = None
+
+    if use_db:
+        db = DatabaseManager()
+
+    load_state(use_db)
+
     root = setup_root()
     root.protocol("WM_DELETE_WINDOW", on_close)
+
     stats_label = setup_stats_label(root)
+
     canvas = setup_canvas(root)
+
     setup_brew_button(canvas, images, brew_click)
     notebook = setup_notebook(root)
+
     setup_producers_tab(notebook, images, producer_widgets, state, buy_producer)
     setup_upgrades_tab(notebook, images, upgrade_widgets, state, buy_upgrade)
     setup_stats_tab(notebook, stats_widgets)
+
     update_ui()
+
     game_loop()
+
     root.mainloop()
 
 # ========================
 # START
 # ========================
 if __name__ == "__main__":
-    main()
+    main(False)

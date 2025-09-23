@@ -46,12 +46,6 @@ coffee-empire/
 ├── shop.png
 ├── turbo.png
 ├── coffee_empire_save.json  # (auto-generated save file)
-├── bak/
-│   ├── barista_big.png
-│   ├── better_beans_big.png
-│   ├── coffee_cup_big.png
-│   ├── machine_big.png
-│   └── shop_big.png
 ```
 
 ## Save/Load
