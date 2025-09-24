@@ -432,4 +432,4 @@ def main(use_db=True):
 # START
 # ========================
 if __name__ == "__main__":
-    main(False)
+    main()
